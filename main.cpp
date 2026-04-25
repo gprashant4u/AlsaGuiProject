@@ -7,7 +7,36 @@
 #include <QPushButton>
 #include <QTimer>
 #include "AlsaManager.h"
+#include <QPainter>
+#include <QPainterPath>
 
+// Simple Widget to draw the sine wave
+class WaveformWidget : public QWidget {
+public:
+    int frequency = 440;
+    WaveformWidget(QWidget *parent = nullptr) : QWidget(parent) {
+        setMinimumHeight(150);
+    }
+
+protected:
+    void paintEvent(QPaintEvent *) override {
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.fillRect(rect(), Qt::black); // Background
+        painter.setPen(QPen(Qt::green, 2));   // "Matrix" Green
+
+        QPainterPath path;
+        path.moveTo(0, height() / 2);
+
+        // Draw the sine wave based on the current frequency
+        for (int x = 0; x < width(); x++) {
+            double angle = 2.0 * M_PI * frequency * (x / (double)width()) / 100.0;
+            int y = (height() / 2) + (sin(angle) * (height() / 3));
+            path.lineTo(x, y);
+        }
+        painter.drawPath(path);
+    }
+};
 int main(int argc, char *argv[]) {
     QApplication a(argc, argv);
     QWidget window;
@@ -35,6 +64,10 @@ int main(int argc, char *argv[]) {
     QPushButton *btn = new QPushButton("Start Audio Stream");
     btn->setCheckable(true);
     layout->addWidget(btn);
+	
+	//Waveform Widget
+	WaveformWidget *visualizer = new WaveformWidget();
+	layout->addWidget(visualizer);
 
     // Continuous Audio Timer
     QTimer *audioTimer = new QTimer();
@@ -59,6 +92,12 @@ int main(int argc, char *argv[]) {
     QObject::connect(volSlider, &QSlider::valueChanged, [&](int val) {
         alsa.setVolume(val);
     });
+	
+	// Update connection:
+	QObject::connect(freqDial, &QDial::valueChanged, [&](int val) {
+    visualizer->frequency = val;
+    visualizer->update(); // Redraws the widget
+	});
 
     window.resize(400, 300);
     window.show();
